@@ -1,0 +1,324 @@
+import React, { useEffect, useRef, useState, useCallback } from "react";
+
+// 게임 설정
+const GAME_WIDTH = 360;
+const GAME_HEIGHT = 640;
+const PLAYER_SIZE = 80;
+const PLAYER_HITBOX = 24;
+const GRAVITY = 0.5;
+const JUMP_POWER = -11; // 발판을 밟기 위한 점프
+const MOVE_SPEED = 5;
+
+export default function App() {
+  const canvasRef = useRef(null);
+  const keys = useRef({ left: false, right: false, jump: false });
+  const animationRef = useRef(null);
+  const [running, setRunning] = useState(true);
+  const [score, setScore] = useState(0); // 현재 깊이 (km)
+
+  // 깊이에 따른 지질층 이름 및 설명 계산
+  const depthNum = parseFloat(score);
+  let layerName = "";
+  let layerDesc = "";
+
+  if (depthNum < 35) {
+    layerName = "지각";
+    layerDesc = "지구의 가장 바깥층입니다. 우리가 딛고 서 있는 단단한 암석 지대죠.";
+  } else if (depthNum < 2900) {
+    layerName = "맨틀";
+    layerDesc = "지구 부피의 80%를 차지합니다. 뜨거운 암석이 천천히 대류하고 있어요.";
+  } else if (depthNum < 5100) {
+    layerName = "외핵";
+    layerDesc = "액체 상태의 철과 니켈로 이루어져 있습니다. 지구의 자기장을 만들죠.";
+  } else {
+    layerName = "내핵";
+    layerDesc = "지구의 중심입니다. 엄청난 압력 때문에 고체 상태의 금속으로 존재합니다.";
+  }
+
+  const gameState = useRef(null);
+
+  // 게임 초기화
+  const initGame = useCallback(() => {
+    const platforms = [];
+    // 첫 번째 발판 (시작 위치)
+    platforms.push({ x: 0, y: 150, width: 80, height: 12 });
+
+    // 아래 방향(+y)으로 발판 1000개 생성
+    for (let i = 1; i < 1000; i++) {
+      platforms.push({
+        x: Math.random() * (GAME_WIDTH - 80),
+        y: 150 + i * 130, // 130px 간격으로 아래로 배치
+        width: 80,
+        height: 10,
+      });
+    }
+
+    gameState.current = {
+      player: { x: GAME_WIDTH / 2 - 20, y: 50, vy: 0, prevY: 50, jumpCount: 0 },
+      platforms,
+      totalDepth: 0,
+      startY: 50,
+    };
+
+    setScore(0);
+    setRunning(true);
+  }, []);
+
+  // 키보드 이벤트
+  useEffect(() => {
+    const down = (e) => {
+      if (e.key === "ArrowLeft") keys.current.left = true;
+      if (e.key === "ArrowRight") keys.current.right = true;
+      if (e.code === "Space") keys.current.jump = true;
+    };
+    const up = (e) => {
+      if (e.key === "ArrowLeft") keys.current.left = false;
+      if (e.key === "ArrowRight") keys.current.right = false;
+      if (e.code === "Space") keys.current.jump = false;
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    initGame();
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, [initGame]);
+
+  // 게임 루프
+  useEffect(() => {
+    const ctx = canvasRef.current.getContext("2d");
+
+    const loop = () => {
+      if (!running) return;
+
+      const state = gameState.current;
+      if (!state) return;
+      const p = state.player;
+
+      // 1. 이동 및 물리
+      if (keys.current.left) p.x -= MOVE_SPEED;
+      if (keys.current.right) p.x += MOVE_SPEED;
+      if (p.x < -20) p.x = -20;
+      if (p.x > GAME_WIDTH - 40) p.x = GAME_WIDTH - 40;
+
+      p.prevY = p.y;
+      p.vy += GRAVITY;
+      p.y += p.vy;
+
+      // 2. 플랫폼 충돌 (위에서 아래로 떨어질 때만)
+      state.platforms.forEach((plat) => {
+        if (p.vy > 0 && p.prevY + PLAYER_HITBOX <= plat.y && p.y + PLAYER_HITBOX >= plat.y) {
+          if (p.x + PLAYER_HITBOX > plat.x && p.x < plat.x + plat.width) {
+            p.y = plat.y - PLAYER_HITBOX;
+            p.vy = 0;
+            p.jumpCount = 0;
+          }
+        }
+      });
+
+      // 점프
+      if (keys.current.jump && p.jumpCount < 2) {
+        p.vy = JUMP_POWER;
+        p.jumpCount++;
+        keys.current.jump = false;
+      }
+
+      // 3. [핵심] 내려가기 카메라 로직
+      const scrollThreshold = GAME_HEIGHT * 0.4; // 화면 위쪽 40% 지점
+      if (p.y > scrollThreshold) {
+        const diff = p.y - scrollThreshold;
+        p.y = scrollThreshold;
+        state.platforms.forEach((plat) => (plat.y -= diff)); // 배경(발판)을 위로 밀어냄
+        state.totalDepth += diff;
+      }
+
+      // 4. 게임 오버 (화면 위쪽 끝으로 밀려나면 사망)
+      if (p.y < -50) setRunning(false);
+
+      // 점수 업데이트 (100px = 10km로 환산)
+      setScore((state.totalDepth / 10).toFixed(2));
+
+      // 5. 그리기
+      // 깊이에 따라 배경색 변경 (갈색 -> 붉은색)
+      const redness = Math.min(depthNum / 20, 150);
+      ctx.fillStyle = `rgb(${40 + redness}, ${25 - redness/4}, 10)`;
+      ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+      // 발판 그리기
+      ctx.fillStyle = "#5d4037";
+      state.platforms.forEach((plat) => {
+        ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
+      });
+
+      // 플레이어 그리기 (간단한 사각형)
+      ctx.fillStyle = "#ffeb3b";
+      ctx.fillRect(p.x, p.y, PLAYER_HITBOX, PLAYER_HITBOX);
+
+      animationRef.current = requestAnimationFrame(loop);
+    };
+
+    animationRef.current = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(animationRef.current);
+  }, [running, depthNum]);
+
+  return (
+    <div style={{ 
+      width: '100vw',           // 화면 전체 너비
+      minHeight: '100vh',       // 화면 전체 높이
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center',     // 가로 중앙
+      justifyContent: 'center', // 세로 중앙
+      backgroundColor: '#1a0f0a',
+      color: 'white', 
+      margin: 0,
+      padding: '20px',
+      boxSizing: 'border-box',
+      overflowX: 'hidden'       // 가로 스크롤 방지
+    }}>
+      {/* 1. 제목: 중앙 상단 */}
+      <h1 style={{ 
+        fontSize: '2.5rem', 
+        fontWeight: 'bold', 
+        marginBottom: '40px',
+        textAlign: 'center' 
+      }}>
+        지구 내부 탐험
+      </h1>
+
+      {/* 2. 게임 + 정보창 컨테이너: 이 박스 자체가 중앙에 옵니다 */}
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'row', 
+        gap: '40px', 
+        alignItems: 'flex-start',
+        justifyContent: 'center', // 내부 요소들도 중앙 정렬
+        width: 'auto'             // 콘텐츠 크기에 맞춤
+      }}>
+        
+        {/* [왼쪽] 게임 화면 (Canvas) */}
+        <div style={{ 
+          position: 'relative', 
+          borderRadius: '20px', 
+          overflow: 'hidden', 
+          border: '5px solid #4e342e',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+          backgroundColor: 'black'
+        }}>
+          <canvas
+            ref={canvasRef}
+            width={GAME_WIDTH}
+            height={GAME_HEIGHT}
+            style={{ display: 'block' }}
+          />
+          {/* 게임오버 시 오버레이도 중앙에 오도록 설정 */}
+          {!running && (
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundColor: 'rgba(0,0,0,0.7)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10
+            }}>
+              <h2 style={{ color: '#ff5252', fontSize: '2rem', fontWeight: '900' }}>탐사 실패</h2>
+            </div>
+          )}
+        </div>
+
+        {/* [오른쪽] 정보 패널 */}
+        <div style={{ 
+          width: `${GAME_WIDTH}px`, 
+          height: `${GAME_HEIGHT}px`, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          backgroundColor: '#2d1b15', 
+          padding: '35px', 
+          borderRadius: '28px', 
+          border: '1px solid #4e342e',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+          boxSizing: 'border-box'
+        }}>
+          {/* 현재 상태 정보 */}
+          <div style={{ marginBottom: '25px' }}>
+            <p style={{ color: '#ffa726', fontSize: '0.9rem', fontWeight: 'bold', margin: '0 0 5px 0' }}>CURRENT LAYER</p>
+            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#ffb74d' }}>{layerName}</div>
+          </div>
+
+          <div style={{ marginBottom: '30px' }}>
+            <p style={{ color: '#a1887f', fontSize: '0.8rem', fontWeight: 'bold', margin: '0 0 5px 0' }}>DEPTH</p>
+            <div style={{ fontSize: '1.4rem' }}>
+              <span style={{ color: '#ff7043', fontWeight: '900', fontSize: '2rem' }}>{score}</span> km
+            </div>
+          </div>
+
+          {/* 지질 정보 가이드 */}
+          <div style={{ 
+            flex: 1, 
+            backgroundColor: 'rgba(0,0,0,0.4)', 
+            padding: '20px', 
+            borderRadius: '16px', 
+            marginBottom: '25px', 
+            fontSize: '0.95rem',
+            lineHeight: '1.7',
+            border: '1px solid #3e2723',
+            overflowY: 'auto',
+            color: '#d7ccc8'
+          }}>
+            <strong style={{ color: '#ffa726', display: 'block', marginBottom: '10px' }}>[ 탐사 가이드 ]</strong>
+            {layerDesc}
+          </div>
+
+          {/* 버튼 및 상태 정보 */}
+          <div style={{ marginBottom: '25px' }}>
+            {!running ? (
+              <button 
+                onClick={initGame} 
+                style={{ 
+                  width: '100%',
+                  backgroundColor: '#d32f2f', 
+                  color: 'white', 
+                  padding: '18px', 
+                  borderRadius: '14px', 
+                  border: 'none', 
+                  fontWeight: 'bold', 
+                  fontSize: '1.1rem',
+                  cursor: 'pointer',
+                  transition: '0.2s',
+                  boxShadow: '0 4px 0 #b71c1c'
+                }}
+                onMouseDown={(e) => e.currentTarget.style.transform = 'translateY(2px)'}
+                onMouseUp={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                다시 탐험 시작
+              </button>
+            ) : (
+              <div style={{ color: '#8d6e63', textAlign: 'center', fontStyle: 'italic', fontWeight: 'bold' }}>
+                ⚠️ 아래로 더 깊이 내려가세요!
+              </div>
+            )}
+          </div>
+
+          {/* 하단 단축키 가이드 */}
+          <div style={{ 
+            fontSize: '0.8rem', 
+            color: '#6d4c41', 
+            padding: '15px', 
+            backgroundColor: 'rgba(0,0,0,0.2)', 
+            borderRadius: '12px',
+            border: '1px solid #3e2723'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+              <span>이동</span> <span style={{ color: '#a1887f' }}>방향키 좌우</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>점프</span> <span style={{ color: '#a1887f' }}>Space Bar</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
