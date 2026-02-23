@@ -1,4 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import playerImgSrc from "./assets/images/player-def.png";
+import playerJumpImgSrc from "./assets/images/player-jump.png";
+import bg0 from "./assets/images/bg-image0.jpg";
 
 // 게임 설정
 const GAME_WIDTH = 360;
@@ -15,6 +18,11 @@ export default function App() {
   const animationRef = useRef(null);
   const [running, setRunning] = useState(true);
   const [score, setScore] = useState(0); // 현재 깊이 (km)
+  const images = useRef({
+    def: new Image(),
+    jump: new Image(),
+    bg0: new Image(),
+  })
 
   // 깊이에 따른 지질층 이름 및 설명 계산
   const depthNum = parseFloat(score);
@@ -104,6 +112,12 @@ export default function App() {
     return () => clearTimeout(timer); // 언마운트 시 타이머 청소
   }, [initGame]);
 
+  useEffect(() => {
+    images.current.def.src = playerImgSrc;
+    images.current.jump.src = playerJumpImgSrc;
+    images.current.bg0.src = bg0;
+  }, []);
+
   // 키보드 이벤트
   useEffect(() => {
     const down = (e) => {
@@ -184,7 +198,7 @@ export default function App() {
         state.totalDepth = 64000;
         state.reachedCore = true;
       }
-      // 4. 게임 오버 (화면 위쪽 끝으로 밀려나면 사망)
+      // 4. 게임 오버 (발판을 못밝고 화면 아래에 부딛히는 경우)
       if (p.y > GAME_HEIGHT) {
         setRunning(false);
       }
@@ -198,15 +212,42 @@ export default function App() {
       ctx.fillStyle = `rgb(${40 + redness}, ${25 - redness/4}, 10)`;
       ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
+      // 지표면 배경 이미지 그리기
+      const bg = images.current.bg0;
+      if (bg.complete && bg.src) {
+        // state.totalDepth만큼 위로 밀려나야 하므로 y좌표에 -state.totalDepth를 적용합니다.
+        // 0(지표면)에서 시작해서 내려갈수록(totalDepth 증가) 이미지는 위로 올라갑니다.
+        const bgY = -state.totalDepth;
+        const bgHeight = GAME_HEIGHT / 2;
+        
+        // 이미지가 화면 밖으로 완전히 사라지면 굳이 그리지 않도록 최적화
+        if (bgY + bgHeight > 0) {
+          ctx.drawImage(bg, 0, bgY, GAME_WIDTH, bgHeight);
+        }
+      }
+
       // 발판 그리기
       ctx.fillStyle = "#5d4037";
       state.platforms.forEach((plat) => {
         ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
       });
 
-      // 플레이어 그리기 (간단한 사각형)
-      ctx.fillStyle = "#ffeb3b";
-      ctx.fillRect(p.x, p.y, PLAYER_HITBOX, PLAYER_HITBOX);
+      // 플레이어 그리기
+      const currentImg = p.onGround ? images.current.def : images.current.jump;
+
+      if (currentImg.complete) {
+        ctx.drawImage(
+          currentImg,
+          p.x - (PLAYER_SIZE - PLAYER_HITBOX) / 2, // 히트박스 중앙 정렬 보정
+          p.y - (PLAYER_SIZE - PLAYER_HITBOX),      // 발이 지면에 닿도록 보정
+          PLAYER_SIZE,
+          PLAYER_SIZE
+        );
+      } else {
+        // 이미지 로드 전 임시 사각형
+        ctx.fillStyle = "#ffeb3b";
+        ctx.fillRect(p.x, p.y, PLAYER_HITBOX, PLAYER_HITBOX);
+      }
 
       animationRef.current = requestAnimationFrame(loop);
     };
@@ -296,12 +337,12 @@ export default function App() {
         }}>
           {/* 현재 상태 정보 */}
           <div style={{ marginBottom: '25px' }}>
-            <p style={{ color: '#ffa726', fontSize: '0.9rem', fontWeight: 'bold', margin: '0 0 5px 0' }}>CURRENT LAYER</p>
+            <p style={{ color: '#ffa726', fontSize: '0.9rem', fontWeight: 'bold', margin: '0 0 5px 0' }}>현재위치</p>
             <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#ffb74d' }}>{layerName}</div>
           </div>
 
           <div style={{ marginBottom: '30px' }}>
-            <p style={{ color: '#a1887f', fontSize: '0.8rem', fontWeight: 'bold', margin: '0 0 5px 0' }}>DEPTH</p>
+            <p style={{ color: '#a1887f', fontSize: '0.8rem', fontWeight: 'bold', margin: '0 0 5px 0' }}>깊이</p>
             <div style={{ fontSize: '1.4rem' }}>
               <span style={{ color: '#ff7043', fontWeight: '900', fontSize: '2rem' }}>{score}</span> km
             </div>
@@ -320,7 +361,7 @@ export default function App() {
             overflowY: 'auto',
             color: '#d7ccc8'
           }}>
-            <strong style={{ color: '#ffa726', display: 'block', marginBottom: '10px' }}>[ 탐사 가이드 ]</strong>
+            <strong style={{ color: '#ffa726', display: 'block', marginBottom: '10px' }}>[ {layerName} 정보 ]</strong>
             {layerDesc}
           </div>
 
