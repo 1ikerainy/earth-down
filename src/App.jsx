@@ -40,29 +40,69 @@ export default function App() {
   // 게임 초기화
   const initGame = useCallback(() => {
     const platforms = [];
+
     // 첫 번째 발판 (시작 위치)
-    platforms.push({ x: 0, y: 150, width: 80, height: 12 });
+    const firstPlatX = GAME_WIDTH / 2 - 40;
+    const firstPlatY = GAME_HEIGHT / 2;
+
+    platforms.push({ 
+      x: firstPlatX, 
+      y: firstPlatY, 
+      width: 80, 
+      height: 12 
+    });
 
     // 아래 방향(+y)으로 발판 1000개 생성
     for (let i = 1; i < 1000; i++) {
+      const yPos = firstPlatY + i * 130;
+
+      if (yPos >= 64400) {
+        platforms.push({
+          x: 0,
+          y: yPos,
+          width: GAME_WIDTH,
+          height: 40,
+          isCore: true
+        });
+        break;
+      }
+
       platforms.push({
         x: Math.random() * (GAME_WIDTH - 80),
-        y: 150 + i * 130, // 130px 간격으로 아래로 배치
+        y: yPos,
         width: 80,
         height: 10,
       });
     }
 
     gameState.current = {
-      player: { x: GAME_WIDTH / 2 - 20, y: 50, vy: 0, prevY: 50, jumpCount: 0 },
+      player: { 
+        x: GAME_WIDTH / 2 - 20,
+        y: 50,
+        vy: 0,
+        prevY: 50,
+        jumpCount: 0,
+        onGround: false },
       platforms,
       totalDepth: 0,
+      cameraY: 0,
       startY: 50,
+      reachedCore: false
     };
 
     setScore(0);
     setRunning(true);
   }, []);
+
+  // 컴포넌트 마운트 시 최초 1회 실행
+  useEffect(() => {
+    // 0초 타이머를 주어 현재의 렌더링이 완전히 끝난 뒤 실행되게 합니다.
+    const timer = setTimeout(() => {
+      initGame();
+    }, 0);
+
+    return () => clearTimeout(timer); // 언마운트 시 타이머 청소
+  }, [initGame]);
 
   // 키보드 이벤트
   useEffect(() => {
@@ -78,12 +118,11 @@ export default function App() {
     };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
-    initGame();
     return () => {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
     };
-  }, [initGame]);
+  }, []);
 
   // 게임 루프
   useEffect(() => {
@@ -95,6 +134,7 @@ export default function App() {
       const state = gameState.current;
       if (!state) return;
       const p = state.player;
+      p.onGround = false;
 
       // 1. 이동 및 물리
       if (keys.current.left) p.x -= MOVE_SPEED;
@@ -113,6 +153,7 @@ export default function App() {
             p.y = plat.y - PLAYER_HITBOX;
             p.vy = 0;
             p.jumpCount = 0;
+            p.onGround = true;
           }
         }
       });
@@ -126,15 +167,27 @@ export default function App() {
 
       // 3. [핵심] 내려가기 카메라 로직
       const scrollThreshold = GAME_HEIGHT * 0.4; // 화면 위쪽 40% 지점
-      if (p.y > scrollThreshold) {
-        const diff = p.y - scrollThreshold;
-        p.y = scrollThreshold;
-        state.platforms.forEach((plat) => (plat.y -= diff)); // 배경(발판)을 위로 밀어냄
-        state.totalDepth += diff;
+      if (p.onGround && p.y > scrollThreshold && state.totalDepth < 64000) {
+        const targetDiff = p.y - scrollThreshold;
+  
+        // 보간율(0.1): 매 프레임 남은 거리의 10%씩 이동 (숫자가 작을수록 부드러움)
+        const lerpAmount = 0.1; 
+        const smoothDiff = targetDiff * lerpAmount;
+
+        p.y -= smoothDiff; // 플레이어 위치 보정
+        state.platforms.forEach((plat) => (plat.y -= smoothDiff)); // 발판 이동
+        state.totalDepth += smoothDiff;
       }
 
+      // 만약 6400km를 살짝 넘었다면 정확히 고정
+      if (state.totalDepth >= 64000) {
+        state.totalDepth = 64000;
+        state.reachedCore = true;
+      }
       // 4. 게임 오버 (화면 위쪽 끝으로 밀려나면 사망)
-      if (p.y < -50) setRunning(false);
+      if (p.y > GAME_HEIGHT) {
+        setRunning(false);
+      }
 
       // 점수 업데이트 (100px = 10km로 환산)
       setScore((state.totalDepth / 10).toFixed(2));
@@ -296,7 +349,7 @@ export default function App() {
               </button>
             ) : (
               <div style={{ color: '#8d6e63', textAlign: 'center', fontStyle: 'italic', fontWeight: 'bold' }}>
-                ⚠️ 아래로 더 깊이 내려가세요!
+                {depthNum >= 6400 ? "🎉 축하합니다! 지구 중심에 도달했습니다!" : "⚠️ 아래로 더 깊이 내려가세요!"}
               </div>
             )}
           </div>
