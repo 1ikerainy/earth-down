@@ -154,7 +154,7 @@ export default function App() {
       if (keys.current.left) p.x -= MOVE_SPEED;
       if (keys.current.right) p.x += MOVE_SPEED;
       if (p.x < -20) p.x = -20;
-      if (p.x > GAME_WIDTH - 40) p.x = GAME_WIDTH - 40;
+      if (p.x > GAME_WIDTH - PLAYER_HITBOX + 20) p.x = GAME_WIDTH - PLAYER_HITBOX + 20;
 
       p.prevY = p.y;
       p.vy += GRAVITY;
