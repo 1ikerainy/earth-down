@@ -76,6 +76,12 @@ export default function App() {
   const animationRef = useRef(null);
   const [running, setRunning] = useState(true);
   const [score, setScore] = useState(0); // 현재 깊이 (km)
+  // 최고 기록 상태 (로컬 스토리지와 연동) ---
+  const [highScore, setHighScore] = useState(() => {
+    const saved = localStorage.getItem("earthExplorerHighScore");
+    return saved ? parseFloat(saved) : 0;
+  });
+
   const images = useRef({
     def: new Image(),
     jump: new Image(),
@@ -208,6 +214,16 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!running) {
+      const currentScore = parseFloat(score);
+      if (currentScore > highScore) {
+        setHighScore(currentScore);
+        localStorage.setItem("earthExplorerHighScore", currentScore.toString());
+      }
+    }
+  }, [running, score, highScore]);
+
   // 게임 루프
   useEffect(() => {
     const ctx = canvasRef.current.getContext("2d");
@@ -273,7 +289,7 @@ export default function App() {
       }
       // 4. 게임 오버 (발판을 못밝고 화면 아래에 부딛히는 경우)
       if (p.y > GAME_HEIGHT) {
-        setRunning(false);
+        //setRunning(false);
       }
 
       // 점수 업데이트 (100px = 10km로 환산)
@@ -432,10 +448,23 @@ export default function App() {
             <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#ffb74d' }}>{layerName}</div>
           </div>
 
-          <div style={{ marginBottom: '30px' }}>
-            <p style={{ color: '#a1887f', fontSize: '0.8rem', fontWeight: 'bold', margin: '0 0 5px 0' }}>깊이</p>
-            <div style={{ fontSize: '1.4rem' }}>
-              <span style={{ color: '#ff7043', fontWeight: '900', fontSize: '2rem' }}>{score}</span> km
+          {/* 현재 깊이 & 최고 기록 (나란히 배치) */}
+          <div style={{ display: 'flex', gap: '30px', marginBottom: '30px' }}>
+            <div>
+              <p style={{ color: '#a1887f', fontSize: '0.8rem', fontWeight: 'bold', margin: '0 0 5px 0' }}>현재 깊이</p>
+              <div style={{ fontSize: '1.4rem' }}>
+                <span style={{ color: '#ff7043', fontWeight: '900', fontSize: '2rem' }}>{score}</span> km
+              </div>
+            </div>
+
+            <div>
+              <p style={{ color: '#a1887f', fontSize: '0.8rem', fontWeight: 'bold', margin: '0 0 5px 0' }}>최고 깊이</p>
+              <div style={{ fontSize: '1.4rem' }}>
+                {/* [수정됨] 현재 점수와 기존 최고 점수 중 더 큰 값을 실시간으로 계산해서 보여줍니다 */}
+                <span style={{ color: '#ffb74d', fontWeight: '900', fontSize: '1.5rem' }}>
+                  {Math.max(parseFloat(score) || 0, highScore).toFixed(2)}
+                </span> km
+              </div>
             </div>
           </div>
 
