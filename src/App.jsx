@@ -214,16 +214,6 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!running) {
-      const currentScore = parseFloat(score);
-      if (currentScore > highScore) {
-        setHighScore(currentScore);
-        localStorage.setItem("earthExplorerHighScore", currentScore.toString());
-      }
-    }
-  }, [running, score, highScore]);
-
   // 게임 루프
   useEffect(() => {
     const ctx = canvasRef.current.getContext("2d");
@@ -289,7 +279,19 @@ export default function App() {
       }
       // 4. 게임 오버 (발판을 못밝고 화면 아래에 부딛히는 경우)
       if (p.y > GAME_HEIGHT) {
-        //setRunning(false);
+        setRunning(false);
+
+        // --- [핵심 수정] 게임이 끝나는 정확한 순간에 최고 기록을 평가하고 저장합니다 ---
+        const finalScore = state.totalDepth / 10;
+        
+        // 이전 최고 기록(prev)과 비교하여 갱신합니다.
+        setHighScore((prevHighScore) => {
+          if (finalScore > prevHighScore) {
+            localStorage.setItem("earthExplorerHighScore", finalScore.toString());
+            return finalScore;
+          }
+          return prevHighScore; // 갱신하지 않으면 원래 점수 유지
+        });
       }
 
       // 점수 업데이트 (100px = 10km로 환산)
