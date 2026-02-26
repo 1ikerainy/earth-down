@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import playerImgSrc from "./assets/images/player-def.png";
 import playerJumpImgSrc from "./assets/images/player-jump.png";
 import bg0 from "./assets/images/bg-image0.jpg";
-
 // 게임 설정
 const GAME_WIDTH = 360;
 const GAME_HEIGHT = 640;
@@ -11,6 +10,65 @@ const PLAYER_HITBOX = 24;
 const GRAVITY = 0.5;
 const JUMP_POWER = -11; // 발판을 밟기 위한 점프
 const MOVE_SPEED = 5;
+
+// 지질층 도트 타일 생성 함수
+const generatePixelTexture = (layer) => {
+  const canvas = document.createElement("canvas");
+  const size = 64; // 타일 한 칸의 크기
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  
+  // 8x8 픽셀 그리드로 도트 느낌 내기
+  const p = 8; 
+  const drawDot = (x, y, color) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(x * p, y * p, p, p);
+  };
+
+  if (layer === "crust") {
+    // [지각] 어두운 흙과 듬성듬성 박힌 돌멩이
+    ctx.fillStyle = "#5D4037"; 
+    ctx.fillRect(0, 0, size, size);
+    const darkRocks = [[1,1],[2,1],[1,2], [5,4],[6,4],[6,5], [3,6],[0,7],[7,0]];
+    const lightRocks = [[2,2], [5,5], [4,7]];
+    darkRocks.forEach(([x, y]) => drawDot(x, y, "#3E2723"));
+    lightRocks.forEach(([x, y]) => drawDot(x, y, "#795548"));
+
+  } else if (layer === "mantle") {
+    // [맨틀] 붉은 마그마와 주황색 대류 흐름선
+    ctx.fillStyle = "#B71C1C"; 
+    ctx.fillRect(0, 0, size, size);
+    const wave1 = [[0,1],[1,1],[2,2],[3,2],[4,1],[5,1],[6,2],[7,2]];
+    const wave2 = [[0,5],[1,6],[2,6],[3,5],[4,5],[5,6],[6,6],[7,5]];
+    wave1.forEach(([x, y]) => drawDot(x, y, "#D84315"));
+    wave2.forEach(([x, y]) => drawDot(x, y, "#FF5722"));
+
+  } else if (layer === "outerCore") {
+    // [외핵] 액체 금속 느낌의 물방울 패턴
+    ctx.fillStyle = "#E65100"; 
+    ctx.fillRect(0, 0, size, size);
+    const drops = [[2,1],[2,2], [6,4],[6,5],[6,6], [1,6]];
+    const highlights = [[2,1], [6,4]];
+    drops.forEach(([x, y]) => drawDot(x, y, "#FFB300"));
+    highlights.forEach(([x, y]) => drawDot(x, y, "#FFF176"));
+
+  } else if (layer === "innerCore") {
+    // [내핵] 거대한 압력으로 압축된 눈부신 고체 결정 (다이아몬드/십자 형태)
+    ctx.fillStyle = "#FFF9C4"; 
+    ctx.fillRect(0, 0, size, size);
+    for (let i = 0; i < 8; i++) {
+      drawDot(i, i, "#FFFFFF");
+      drawDot(7 - i, i, "#FFFFFF");
+    }
+    // 중심부 코어
+    drawDot(3, 3, "#FFEB3B"); drawDot(4, 3, "#FFEB3B");
+    drawDot(3, 4, "#FFEB3B"); drawDot(4, 4, "#FFEB3B");
+  }
+
+  // 그려진 캔버스를 Base64 이미지 URL로 반환
+  return canvas.toDataURL("image/png");
+};
 
 export default function App() {
   const canvasRef = useRef(null);
@@ -22,6 +80,10 @@ export default function App() {
     def: new Image(),
     jump: new Image(),
     bg0: new Image(),
+    crust: new Image(),
+    mantle: new Image(),
+    outerCore: new Image(),
+    innerCore: new Image(),
   })
 
   // 깊이에 따른 지질층 이름 및 설명 계산
@@ -120,6 +182,10 @@ export default function App() {
     images.current.def.src = playerImgSrc;
     images.current.jump.src = playerJumpImgSrc;
     images.current.bg0.src = bg0;
+    images.current.crust.src = generatePixelTexture("crust");
+    images.current.mantle.src = generatePixelTexture("mantle");
+    images.current.outerCore.src = generatePixelTexture("outerCore");
+    images.current.innerCore.src = generatePixelTexture("innerCore");
   }, []);
 
   // 키보드 이벤트
@@ -150,7 +216,10 @@ export default function App() {
       if (!running) return;
 
       const state = gameState.current;
-      if (!state) return;
+      if (!state) {
+        animationRef.current = requestAnimationFrame(loop);
+        return;
+      }
       const p = state.player;
       p.onGround = false;
 
@@ -166,7 +235,7 @@ export default function App() {
 
       // 2. 플랫폼 충돌 (위에서 아래로 떨어질 때만)
       state.platforms.forEach((plat) => {
-        if (p.vy > 0 && p.prevY + PLAYER_HITBOX <= plat.y && p.y + PLAYER_HITBOX >= plat.y) {
+        if (p.vy > 0 && p.prevY + PLAYER_HITBOX <= plat.y + 5 && p.y + PLAYER_HITBOX >= plat.y) {
           if (p.x + PLAYER_HITBOX > plat.x && p.x < plat.x + plat.width) {
             p.y = plat.y - PLAYER_HITBOX;
             p.vy = 0;
@@ -211,44 +280,62 @@ export default function App() {
       setScore((state.totalDepth / 10).toFixed(2));
 
       // 5. 그리기
-      // 깊이에 따라 배경색 변경 (갈색 -> 붉은색)
-      const redness = Math.min(depthNum / 20, 150);
-      ctx.fillStyle = `rgb(${40 + redness}, ${25 - redness/4}, 10)`;
-      ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+      const currentDepth = state.totalDepth / 10;
+      
+      // --- [1단계] 지질층 타일 배경 먼저 그리기 (제일 뒤쪽) ---
+      let currentBgImg = null;
+      if (currentDepth < 35) currentBgImg = images.current.crust;
+      else if (currentDepth < 2900) currentBgImg = images.current.mantle;
+      else if (currentDepth < 5100) currentBgImg = images.current.outerCore;
+      else currentBgImg = images.current.innerCore;
 
-      // 지표면 배경 이미지 그리기
+      if (currentBgImg && currentBgImg.complete && currentBgImg.naturalHeight > 0) {
+        const parallaxSpeed = 0.5; 
+        const offsetY = (state.totalDepth * parallaxSpeed) % currentBgImg.naturalHeight;
+        for (let y = -offsetY; y < GAME_HEIGHT; y += currentBgImg.naturalHeight) {
+          for (let x = 0; x < GAME_WIDTH; x += currentBgImg.naturalWidth) {
+            ctx.drawImage(currentBgImg, x, y);
+          }
+        }
+      } else {
+        const redness = Math.min(currentDepth / 20, 150);
+        ctx.fillStyle = `rgb(${40 + redness}, ${25 - redness/4}, 10)`;
+        ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+      }
+
+      // --- [2단계] 지표면 하늘 이미지 그리기 ---
       const bg = images.current.bg0;
       if (bg.complete && bg.src) {
-        // state.totalDepth만큼 위로 밀려나야 하므로 y좌표에 -state.totalDepth를 적용합니다.
-        // 0(지표면)에서 시작해서 내려갈수록(totalDepth 증가) 이미지는 위로 올라갑니다.
         const bgY = -state.totalDepth;
         const bgHeight = GAME_HEIGHT / 2;
-        
-        // 이미지가 화면 밖으로 완전히 사라지면 굳이 그리지 않도록 최적화
         if (bgY + bgHeight > 0) {
           ctx.drawImage(bg, 0, bgY, GAME_WIDTH, bgHeight);
         }
       }
 
-      // 발판 그리기
-      ctx.fillStyle = "#5d4037";
+      // --- [3단계] 발판 그리기 (배경 위에 덮어쓰기) ---
       state.platforms.forEach((plat) => {
+        // 1. 발판 내부 색상 (배경보다 밝은 갈색으로 변경)
+        ctx.fillStyle = "#8D6E63"; 
         ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
+
+        // 2. 발판 테두리 추가 (눈에 확실히 띄게 만듦)
+        ctx.strokeStyle = "#3E2723";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(plat.x, plat.y, plat.width, plat.height);
       });
 
-      // 플레이어 그리기
+      // --- [4단계] 캐릭터 그리기 (제일 앞쪽) ---
       const currentImg = p.onGround ? images.current.def : images.current.jump;
-
       if (currentImg.complete) {
         ctx.drawImage(
           currentImg,
-          p.x - (PLAYER_SIZE - PLAYER_HITBOX) / 2, // 히트박스 중앙 정렬 보정
-          p.y - (PLAYER_SIZE - PLAYER_HITBOX),      // 발이 지면에 닿도록 보정
+          p.x - (PLAYER_SIZE - PLAYER_HITBOX) / 2, 
+          p.y - (PLAYER_SIZE - PLAYER_HITBOX),      
           PLAYER_SIZE,
           PLAYER_SIZE
         );
       } else {
-        // 이미지 로드 전 임시 사각형
         ctx.fillStyle = "#ffeb3b";
         ctx.fillRect(p.x, p.y, PLAYER_HITBOX, PLAYER_HITBOX);
       }
