@@ -83,18 +83,22 @@ export default function App() {
       });
     }
 
+    // 플레이어를 첫 번째 발판 바로 위(y좌표)에 배치하여 시작 시 추락하는 현상 제거
+    const playerStartX = GAME_WIDTH / 2 - 20;
+    const playerStartY = firstPlatY - PLAYER_HITBOX;
+
     gameState.current = {
       player: { 
-        x: GAME_WIDTH / 2 - 20,
-        y: 50,
+        x: playerStartX,
+        y: playerStartY,
         vy: 0,
-        prevY: 50,
+        prevY: playerStartY,
         jumpCount: 0,
-        onGround: false },
+        onGround: true },
       platforms,
       totalDepth: 0,
       cameraY: 0,
-      startY: 50,
+      startY: playerStartY,
       reachedCore: false
     };
 
@@ -180,7 +184,7 @@ export default function App() {
       }
 
       // 3. [핵심] 내려가기 카메라 로직
-      const scrollThreshold = GAME_HEIGHT * 0.4; // 화면 위쪽 40% 지점
+      const scrollThreshold = GAME_HEIGHT / 2; // 화면 위쪽 50% 지점
       if (p.onGround && p.y > scrollThreshold && state.totalDepth < 64000) {
         const targetDiff = p.y - scrollThreshold;
   
