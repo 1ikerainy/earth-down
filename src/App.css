@@ -1,42 +1,193 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+/* 전체 화면 컨테이너 (화면 꽉 채우기) */
+.earth-game-container {
+  width: 100vw;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #1a0f0a; /* 깊은 땅속 느낌의 다크 브라운 */
+  color: white;
+  margin: 0;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* 메인 타이틀 */
+.earth-game-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 40px;
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* 게임 캔버스와 정보창을 담는 가로 레이아웃 */
+.earth-game-layout {
+  display: flex;
+  flex-direction: row;
+  gap: 40px;
+  align-items: flex-start;
+  justify-content: center;
+  width: auto;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* 왼쪽 캔버스 영역 */
+.canvas-wrapper {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 5px solid #4e342e;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  background-color: black;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+/* 게임 오버 오버레이 (캔버스 위에 덮임) */
+.game-over-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
 }
 
-.card {
-  padding: 2em;
+.game-over-title {
+  color: #ff5252;
+  font-size: 2rem;
+  font-weight: 900;
 }
 
-.read-the-docs {
-  color: #888;
+/* 오른쪽 정보 패널 */
+.info-panel {
+  display: flex;
+  flex-direction: column;
+  background-color: #2d1b15;
+  padding: 35px;
+  border-radius: 28px;
+  border: 1px solid #4e342e;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  box-sizing: border-box;
+}
+
+/* 정보창 텍스트 요소들 */
+.info-label {
+  color: #a1887f;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin: 0 0 5px 0;
+}
+
+.layer-name-label {
+  color: #ffa726;
+  font-size: 0.9rem;
+  font-weight: bold;
+  margin: 0 0 5px 0;
+}
+
+.layer-name-value {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #ffb74d;
+}
+
+.depth-container {
+  display: flex;
+  gap: 30px;
+  margin-bottom: 30px;
+}
+
+.depth-value-wrapper {
+  font-size: 1.4rem;
+}
+
+.current-depth-number {
+  color: #ff7043;
+  font-weight: 900;
+  font-size: 2rem;
+}
+
+.high-depth-number {
+  color: #ffb74d;
+  font-weight: 900;
+  font-size: 1.5rem;
+}
+
+/* 지질 정보 가이드 박스 */
+.layer-desc-box {
+  flex: 1;
+  background-color: rgba(0, 0, 0, 0.4);
+  padding: 20px;
+  border-radius: 16px;
+  margin-bottom: 25px;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  border: 1px solid #3e2723;
+  overflow-y: auto;
+  color: #d7ccc8;
+}
+
+.layer-desc-title {
+  color: #ffa726;
+  display: block;
+  margin-bottom: 10px;
+}
+
+/* 상태 및 버튼 영역 */
+.status-area {
+  margin-bottom: 25px;
+}
+
+.playing-status-text {
+  color: #8d6e63;
+  text-align: center;
+  font-style: italic;
+  font-weight: bold;
+}
+
+/* 다시 시작 버튼 (마우스 오버/클릭 효과) */
+.restart-btn {
+  width: 100%;
+  background-color: #d32f2f;
+  color: white;
+  padding: 18px;
+  border-radius: 14px;
+  border: none;
+  font-weight: bold;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 0 #b71c1c;
+}
+
+.restart-btn:hover {
+  background-color: #f44336;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #b71c1c;
+}
+
+.restart-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #b71c1c;
+}
+
+/* 하단 조작 가이드 */
+.controls-guide {
+  font-size: 0.8rem;
+  color: #6d4c41;
+  padding: 15px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  border: 1px solid #3e2723;
+}
+
+.control-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.control-key {
+  color: #a1887f;
 }

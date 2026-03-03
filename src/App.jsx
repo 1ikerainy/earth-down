@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import './App.css';
 import playerImgSrc from "./assets/images/player-def.png";
 import playerJumpImgSrc from "./assets/images/player-jump.png";
 import bg0 from "./assets/images/bg-image0.jpg";
@@ -366,104 +367,55 @@ export default function App() {
   }, [running, depthNum]);
 
   return (
-    <div style={{ 
-      width: '100vw',           // 화면 전체 너비
-      minHeight: '100vh',       // 화면 전체 높이
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'center',     // 가로 중앙
-      justifyContent: 'center', // 세로 중앙
-      backgroundColor: '#1a0f0a',
-      color: 'white', 
-      margin: 0,
-      padding: '20px',
-      boxSizing: 'border-box',
-      overflowX: 'hidden'       // 가로 스크롤 방지
-    }}>
+    <div className="earth-game-container">
       {/* 1. 제목: 중앙 상단 */}
-      <h1 style={{ 
-        fontSize: '2.5rem', 
-        fontWeight: 'bold', 
-        marginBottom: '40px',
-        textAlign: 'center' 
-      }}>
+      <h1 className="earth-game-title">
         지구 내부 탐험
       </h1>
 
-      {/* 2. 게임 + 정보창 컨테이너: 이 박스 자체가 중앙에 옵니다 */}
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'row', 
-        gap: '40px', 
-        alignItems: 'flex-start',
-        justifyContent: 'center', // 내부 요소들도 중앙 정렬
-        width: 'auto'             // 콘텐츠 크기에 맞춤
-      }}>
+      {/* 2. 게임 + 정보창 컨테이너 */}
+      <div className="earth-game-layout">
         
         {/* [왼쪽] 게임 화면 (Canvas) */}
-        <div style={{ 
-          position: 'relative', 
-          borderRadius: '20px', 
-          overflow: 'hidden', 
-          border: '5px solid #4e342e',
-          boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
-          backgroundColor: 'black'
-        }}>
+        <div className="canvas-wrapper">
           <canvas
             ref={canvasRef}
             width={GAME_WIDTH}
             height={GAME_HEIGHT}
             style={{ display: 'block' }}
           />
-          {/* 게임오버 시 오버레이도 중앙에 오도록 설정 */}
+          {/* 게임오버 오버레이 */}
           {!running && (
-            <div style={{
-              position: 'absolute',
-              inset: 0,
-              backgroundColor: 'rgba(0,0,0,0.7)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 10
-            }}>
-              <h2 style={{ color: '#ff5252', fontSize: '2rem', fontWeight: '900' }}>탐사 실패</h2>
+            <div className="game-over-overlay">
+              <h2 className="game-over-title">탐사 실패</h2>
             </div>
           )}
         </div>
 
         {/* [오른쪽] 정보 패널 */}
-        <div style={{ 
-          width: `${GAME_WIDTH}px`, 
-          height: `${GAME_HEIGHT}px`, 
-          display: 'flex', 
-          flexDirection: 'column', 
-          backgroundColor: '#2d1b15', 
-          padding: '35px', 
-          borderRadius: '28px', 
-          border: '1px solid #4e342e',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
-          boxSizing: 'border-box'
-        }}>
+        <div 
+          className="info-panel"
+          style={{ width: `${GAME_WIDTH}px`, height: `${GAME_HEIGHT}px` }} 
+        >
           {/* 현재 상태 정보 */}
           <div style={{ marginBottom: '25px' }}>
-            <p style={{ color: '#ffa726', fontSize: '0.9rem', fontWeight: 'bold', margin: '0 0 5px 0' }}>현재위치</p>
-            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#ffb74d' }}>{layerName}</div>
+            <p className="layer-name-label">현재위치</p>
+            <div className="layer-name-value">{layerName}</div>
           </div>
 
           {/* 현재 깊이 & 최고 기록 (나란히 배치) */}
-          <div style={{ display: 'flex', gap: '30px', marginBottom: '30px' }}>
+          <div className="depth-container">
             <div>
-              <p style={{ color: '#a1887f', fontSize: '0.8rem', fontWeight: 'bold', margin: '0 0 5px 0' }}>현재 깊이</p>
-              <div style={{ fontSize: '1.4rem' }}>
-                <span style={{ color: '#ff7043', fontWeight: '900', fontSize: '2rem' }}>{score}</span> km
+              <p className="info-label">현재 깊이</p>
+              <div className="depth-value-wrapper">
+                <span className="current-depth-number">{score}</span> km
               </div>
             </div>
 
             <div>
-              <p style={{ color: '#a1887f', fontSize: '0.8rem', fontWeight: 'bold', margin: '0 0 5px 0' }}>최고 깊이</p>
-              <div style={{ fontSize: '1.4rem' }}>
-                {/* [수정됨] 현재 점수와 기존 최고 점수 중 더 큰 값을 실시간으로 계산해서 보여줍니다 */}
-                <span style={{ color: '#ffb74d', fontWeight: '900', fontSize: '1.5rem' }}>
+              <p className="info-label">최고 깊이</p>
+              <div className="depth-value-wrapper">
+                <span className="high-depth-number">
                   {Math.max(parseFloat(score) || 0, highScore).toFixed(2)}
                 </span> km
               </div>
@@ -471,66 +423,34 @@ export default function App() {
           </div>
 
           {/* 지질 정보 가이드 */}
-          <div style={{ 
-            flex: 1, 
-            backgroundColor: 'rgba(0,0,0,0.4)', 
-            padding: '20px', 
-            borderRadius: '16px', 
-            marginBottom: '25px', 
-            fontSize: '0.95rem',
-            lineHeight: '1.7',
-            border: '1px solid #3e2723',
-            overflowY: 'auto',
-            color: '#d7ccc8'
-          }}>
-            <strong style={{ color: '#ffa726', display: 'block', marginBottom: '10px' }}>[ {layerName} 정보 ]</strong>
+          <div className="layer-desc-box">
+            <strong className="layer-desc-title">[ {layerName} 정보 ]</strong>
             {layerDesc}
           </div>
 
           {/* 버튼 및 상태 정보 */}
-          <div style={{ marginBottom: '25px' }}>
+          <div className="status-area">
             {!running ? (
               <button 
+                className="restart-btn"
                 onClick={initGame} 
-                style={{ 
-                  width: '100%',
-                  backgroundColor: '#d32f2f', 
-                  color: 'white', 
-                  padding: '18px', 
-                  borderRadius: '14px', 
-                  border: 'none', 
-                  fontWeight: 'bold', 
-                  fontSize: '1.1rem',
-                  cursor: 'pointer',
-                  transition: '0.2s',
-                  boxShadow: '0 4px 0 #b71c1c'
-                }}
-                onMouseDown={(e) => e.currentTarget.style.transform = 'translateY(2px)'}
-                onMouseUp={(e) => e.currentTarget.style.transform = 'translateY(0)'}
               >
                 다시 탐험 시작
               </button>
             ) : (
-              <div style={{ color: '#8d6e63', textAlign: 'center', fontStyle: 'italic', fontWeight: 'bold' }}>
+              <div className="playing-status-text">
                 {depthNum >= 6400 ? "🎉 축하합니다! 지구 중심에 도달했습니다!" : "⚠️ 아래로 더 깊이 내려가세요!"}
               </div>
             )}
           </div>
 
           {/* 하단 단축키 가이드 */}
-          <div style={{ 
-            fontSize: '0.8rem', 
-            color: '#6d4c41', 
-            padding: '15px', 
-            backgroundColor: 'rgba(0,0,0,0.2)', 
-            borderRadius: '12px',
-            border: '1px solid #3e2723'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-              <span>이동</span> <span style={{ color: '#a1887f' }}>방향키 좌우</span>
+          <div className="controls-guide">
+            <div className="control-item">
+              <span>이동</span> <span className="control-key">방향키 좌우</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>점프</span> <span style={{ color: '#a1887f' }}>Space Bar</span>
+            <div className="control-item" style={{ marginBottom: 0 }}>
+              <span>점프</span> <span className="control-key">Space Bar</span>
             </div>
           </div>
         </div>
