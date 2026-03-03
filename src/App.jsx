@@ -12,6 +12,22 @@ const GRAVITY = 0.5;
 const JUMP_POWER = -11; // 발판을 밟기 위한 점프
 const MOVE_SPEED = 5;
 
+// 변경: 지각(0~35km)은 40px = 1km (4배 느림)
+// 변경: 맨틀~(35km~)은 2.5px = 1km (4배 빠름)
+function getKmFromPixels(pixels) {
+  // 35km 지점은 픽셀로 1400px (35 * 40)
+  if (pixels <= 1400) return pixels / 40; 
+  return 35 + (pixels - 1400) / 2.5; 
+}
+
+function getPixelsFromKm(km) {
+  if (km <= 35) return km * 40;
+  return 1400 + (km - 35) * 2.5;
+}
+
+// 6400km(내핵 도달)에 필요한 실제 픽셀 수 (약 17312.5 픽셀)
+const CORE_PIXEL_DEPTH = getPixelsFromKm(6400);
+
 // 지질층 도트 타일 생성 함수
 const generatePixelTexture = (layer) => {
   const canvas = document.createElement("canvas");
@@ -133,7 +149,8 @@ export default function App() {
     for (let i = 1; i < 1000; i++) {
       const yPos = firstPlatY + i * 130;
 
-      if (yPos >= 64400) {
+      // [수정] 64400 대신 계산된 CORE_PIXEL_DEPTH 사용
+      if (yPos >= firstPlatY + CORE_PIXEL_DEPTH) {
         platforms.push({
           x: 0,
           y: yPos,
@@ -261,7 +278,7 @@ export default function App() {
 
       // 3. [핵심] 내려가기 카메라 로직
       const scrollThreshold = GAME_HEIGHT / 2; // 화면 위쪽 50% 지점
-      if (p.onGround && p.y > scrollThreshold && state.totalDepth < 64000) {
+      if (p.onGround && p.y > scrollThreshold && state.totalDepth < CORE_PIXEL_DEPTH) {
         const targetDiff = p.y - scrollThreshold;
   
         // 보간율(0.1): 매 프레임 남은 거리의 10%씩 이동 (숫자가 작을수록 부드러움)
@@ -273,17 +290,16 @@ export default function App() {
         state.totalDepth += smoothDiff;
       }
 
-      // 만약 6400km를 살짝 넘었다면 정확히 고정
-      if (state.totalDepth >= 64000) {
-        state.totalDepth = 64000;
+      if (state.totalDepth >= CORE_PIXEL_DEPTH) {
+        state.totalDepth = CORE_PIXEL_DEPTH;
         state.reachedCore = true;
       }
       // 4. 게임 오버 (발판을 못밝고 화면 아래에 부딛히는 경우)
       if (p.y > GAME_HEIGHT) {
         setRunning(false);
 
-        // --- [핵심 수정] 게임이 끝나는 정확한 순간에 최고 기록을 평가하고 저장합니다 ---
-        const finalScore = state.totalDepth / 10;
+        // 게임이 끝나는 정확한 순간에 최고 기록을 평가하고 저장합니다 ---
+        const finalScore = getKmFromPixels(state.totalDepth);
         
         // 이전 최고 기록(prev)과 비교하여 갱신합니다.
         setHighScore((prevHighScore) => {
@@ -291,16 +307,15 @@ export default function App() {
             localStorage.setItem("earthExplorerHighScore", finalScore.toString());
             return finalScore;
           }
-          return prevHighScore; // 갱신하지 않으면 원래 점수 유지
+          return prevHighScore; 
         });
       }
 
       // 점수 업데이트 (100px = 10km로 환산)
-      setScore((state.totalDepth / 10).toFixed(2));
+      const currentDepth = getKmFromPixels(state.totalDepth);
+      setScore(currentDepth.toFixed(2));
 
       // 5. 그리기
-      const currentDepth = state.totalDepth / 10;
-      
       // --- [1단계] 지질층 타일 배경 먼저 그리기 (제일 뒤쪽) ---
       let currentBgImg = null;
       if (currentDepth < 35) currentBgImg = images.current.crust;
