@@ -116,16 +116,16 @@ export default function App() {
 
   if (depthNum < 35) {
     layerName = "지각";
-    layerDesc = "지구의 가장 바깥층입니다. 우리가 딛고 서 있는 단단한 암석 지대죠.";
+    layerDesc = "지각은 두께가 가장 얇은 고체 상태의 층으오, 평균 두께가 약 35km인 대륙 지각과 평균 두께가 약 5km인 해양 지각으로 구분된다.";
   } else if (depthNum < 2900) {
     layerName = "맨틀";
-    layerDesc = "지구 부피의 80%를 차지합니다. 뜨거운 암석이 천천히 대류하고 있어요.";
+    layerDesc = "맨틀은 지각 아래에서부터 깊이 약 2900km까지의 유동성있는 고체상태의 암석 층이고 지구 전체 부피의 약 80%를 차지한다.";
   } else if (depthNum < 5100) {
     layerName = "외핵";
-    layerDesc = "액체 상태의 철과 니켈로 이루어져 있습니다. 지구의 자기장을 만들죠.";
+    layerDesc = "외핵은 깊이 약 2900km부터 약 5100km까지의 층으로 액체 상태의 철과 니켈로 이루어져있다.";
   } else {
     layerName = "내핵";
-    layerDesc = "지구의 중심입니다. 엄청난 압력 때문에 고체 상태의 금속으로 존재합니다.";
+    layerDesc = "내핵은 깊이 약 5100km에서 지구 중심까지의 층으로 고체 상태의 철과 니켈로 이루어져있다.";
   }
 
   const gameState = useRef(null);
@@ -450,7 +450,7 @@ export default function App() {
                 className="restart-btn"
                 onClick={initGame} 
               >
-                다시 탐험 시작
+                흥 나락갔쥬?
               </button>
             ) : (
               <div className="playing-status-text">
