@@ -169,10 +169,17 @@ export default function App() {
         break;
       }
 
-      // --- [핵심 추가] 외핵(2900km)부터 하드모드 적용 ---
-      const isHardMode = kmDepth >= 2900;
-      const platWidth = isHardMode ? 54 : 80; // 크기 2/3로 축소 (80 * 2/3 = 약 54)
-      const platDx = isHardMode ? (Math.random() > 0.5 ? 2 : -2) : 0; // 랜덤으로 좌우 이동 속도 부여 (2 또는 -2)
+      // --- [수정] 구간별 기믹 분리 적용 ---
+      // 외핵(2900km) 진입 여부와 내핵(5100km) 진입 여부를 따로 체크합니다.
+      const isOuterCore = kmDepth >= 2900;
+      const isInnerCore = kmDepth >= 5100;
+
+      // 1. 발판 크기: 내핵(5100km)부터만 2/3(54px)로 줄어듭니다.
+      const platWidth = isInnerCore ? 54 : 80; 
+
+      // 2. 발판 이동: 외핵(2900km)부터 액체 상태이므로 계속 좌우로 움직입니다.
+      // (만약 움직이는 것도 내핵부터 하고 싶으시다면 isInnerCore로 변경하시면 됩니다.)
+      const platDx = isOuterCore ? (Math.random() > 0.5 ? 2 : -2) : 0; 
 
       // 이전 발판과 40px 이상 차이가 날 때까지 X좌표 다시 뽑기
       let newX;
