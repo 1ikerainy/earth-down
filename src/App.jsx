@@ -116,7 +116,7 @@ export default function App() {
 
   if (depthNum < 35) {
     layerName = "지각";
-    layerDesc = "지각은 두께가 가장 얇은 고체 상태의 층으오, 평균 두께가 약 35km인 대륙 지각과 평균 두께가 약 5km인 해양 지각으로 구분된다.";
+    layerDesc = "지각은 두께가 가장 얇은 고체 상태의 층으로, 평균 두께가 약 35km인 대륙 지각과 평균 두께가 약 5km인 해양 지각으로 구분된다.";
   } else if (depthNum < 2900) {
     layerName = "맨틀";
     layerDesc = "맨틀은 지각 아래에서부터 깊이 약 2900km까지의 유동성있는 고체상태의 암석 층이고 지구 전체 부피의 약 80%를 차지한다.";
