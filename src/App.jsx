@@ -145,27 +145,51 @@ export default function App() {
       height: 12 
     });
 
+    // [추가] 이전 발판 X좌표 기억 (겹침 방지용)
+    let prevX = firstPlatX;
+
     // 아래 방향(+y)으로 발판 1000개 생성
     for (let i = 1; i < 1000; i++) {
       const yPos = firstPlatY + i * 130;
+      
+      // 현재 발판의 실제 픽셀 깊이와 km 환산 깊이 구하기
+      const pixelDepth = yPos - firstPlatY;
+      const kmDepth = getKmFromPixels(pixelDepth);
 
-      // [수정] 64400 대신 계산된 CORE_PIXEL_DEPTH 사용
-      if (yPos >= firstPlatY + CORE_PIXEL_DEPTH) {
+      // 내핵 도달 시 거대한 바닥 생성
+      if (pixelDepth >= CORE_PIXEL_DEPTH) {
         platforms.push({
           x: 0,
           y: yPos,
           width: GAME_WIDTH,
           height: 40,
+          dx: 0,
           isCore: true
         });
         break;
       }
 
+      // --- [핵심 추가] 외핵(2900km)부터 하드모드 적용 ---
+      const isHardMode = kmDepth >= 2900;
+      const platWidth = isHardMode ? 54 : 80; // 크기 2/3로 축소 (80 * 2/3 = 약 54)
+      const platDx = isHardMode ? (Math.random() > 0.5 ? 2 : -2) : 0; // 랜덤으로 좌우 이동 속도 부여 (2 또는 -2)
+
+      // 이전 발판과 40px 이상 차이가 날 때까지 X좌표 다시 뽑기
+      let newX;
+      let attempts = 0;
+      do {
+        newX = Math.random() * (GAME_WIDTH - platWidth);
+        attempts++;
+      } while (Math.abs(newX - prevX) < 40 && attempts < 20); 
+
+      prevX = newX;
+
       platforms.push({
-        x: Math.random() * (GAME_WIDTH - 80),
+        x: newX,
         y: yPos,
-        width: 80,
+        width: platWidth,
         height: 10,
+        dx: platDx, // 이동 속도 저장
       });
     }
 
@@ -180,7 +204,8 @@ export default function App() {
         vy: 0,
         prevY: playerStartY,
         jumpCount: 0,
-        onGround: true },
+        onGround: true
+      },
       platforms,
       totalDepth: 0,
       cameraY: 0,
@@ -250,6 +275,22 @@ export default function App() {
       // 1. 이동 및 물리
       if (keys.current.left) p.x -= MOVE_SPEED;
       if (keys.current.right) p.x += MOVE_SPEED;
+
+      // --- [핵심 추가] 발판 좌우 이동 로직 ---
+      state.platforms.forEach((plat) => {
+        if (plat.dx) {
+          plat.x += plat.dx;
+          // 화면 양끝 벽에 부딪히면 반대로 튕기기
+          if (plat.x <= 0) {
+            plat.x = 0;
+            plat.dx *= -1;
+          } else if (plat.x + plat.width >= GAME_WIDTH) {
+            plat.x = GAME_WIDTH - plat.width;
+            plat.dx *= -1;
+          }
+        }
+      });
+
       if (p.x < -20) p.x = -20;
       if (p.x > GAME_WIDTH - PLAYER_HITBOX + 20) p.x = GAME_WIDTH - PLAYER_HITBOX + 20;
 
@@ -265,6 +306,11 @@ export default function App() {
             p.vy = 0;
             p.jumpCount = 0;
             p.onGround = true;
+            
+            // --- [핵심 추가] 움직이는 발판 위에 서 있으면 캐릭터도 같이 밀려남 ---
+            if (plat.dx) {
+              p.x += plat.dx; 
+            }
           }
         }
       });
